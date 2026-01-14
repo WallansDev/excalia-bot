@@ -54,6 +54,44 @@ bot.on("end", () => {
   }, 5000);
 });
 
+// Variable pour gérer l'état du farm_chasseur
+let farmChasseurActive = false;
+let farmChasseurInterval = null;
+
+// Fonction pour exécuter une itération de farm
+function executeFarmChasseur() {
+  const center = bot.entity.position;
+  const radius = 5;
+
+  // Récupérer toutes les entités non-joueurs dans le rayon
+  const nearbyMobs = Object.values(bot.entities).filter((entity) => {
+    if (!entity || !entity.position) return false;
+    if (entity.id === bot.entity.id) return false;
+    if (entity.type === "player") return false;
+    const distance = entity.position.distanceTo(center);
+    return distance <= radius;
+  });
+
+  if (nearbyMobs.length === 0) {
+    return; // Pas de mobs, on continue la boucle sans attaquer
+  }
+
+  // Attaquer chaque mob avec un délai approprié pour éviter les kicks
+  nearbyMobs.forEach((mob, index) => {
+    const delay = index * 1000; // 1 seconde entre chaque mob pour éviter les kicks
+    setTimeout(() => {
+      if (!farmChasseurActive) return; // Arrêt demandé
+      if (!mob.isValid || !mob.position) return; // L'entité a peut-être disparu
+      try {
+        bot.attack(mob);
+        console.log(`⚔️ Attaque d'un ${mob.displayName || mob.name || "mob"}`);
+      } catch (err) {
+        console.log("Erreur lors de l'attaque d'un mob:", err.message);
+      }
+    }, delay);
+  });
+}
+
 bot.on("whisper", (username, message, rawMessage) => {
   if (username === bot.username) return;
 
@@ -64,7 +102,7 @@ bot.on("whisper", (username, message, rawMessage) => {
   if (lowerMessage.includes("pos")) {
     const pos = bot.entity.position;
 
-    const reply = `ℹ️ Ma position: X=${pos.x.toFixed(1)}, Y=${pos.y.toFixed(
+    const reply = `ℹ️Ma position: X=${pos.x.toFixed(1)}, Y=${pos.y.toFixed(
       1
     )}, Z=${pos.z.toFixed(1)}`;
 
@@ -74,17 +112,104 @@ bot.on("whisper", (username, message, rawMessage) => {
   if (lowerMessage.includes("tpa")) {
     const pos = bot.entity.position;
 
-    bot.whisper(username, "ℹ️ Accepter ma demande de tp.");
-    bot.chat(`/tpa ${username}`);
+    bot.whisper(username, "❓ Accepter ma demande de tp.");
+    bot.chat(`/tp ${username}`);
+  }
+
+  // Démarrer le farm_chasseur
+  if (
+    lowerMessage.includes("farm_chasseur") &&
+    !lowerMessage.includes("stop")
+  ) {
+    if (farmChasseurActive) {
+      bot.whisper(username, "⚠️ Le farm_chasseur est déjà actif!");
+      return;
+    }
+
+    farmChasseurActive = true;
+    bot.whisper(
+      username,
+      "✅ Farm_chasseur démarré! Envoie 'farm_chasseur stop' pour arrêter."
+    );
+
+    // Exécuter immédiatement une première fois
+    executeFarmChasseur();
+
+    // Puis exécuter en boucle toutes les 2 secondes
+    farmChasseurInterval = setInterval(() => {
+      if (!farmChasseurActive) {
+        clearInterval(farmChasseurInterval);
+        return;
+      }
+      executeFarmChasseur();
+    }, 2000); // 2 secondes entre chaque cycle de détection/attaque
+  }
+
+  // Arrêter le farm_chasseur
+  if (lowerMessage.includes("farm_chasseur stop")) {
+    if (!farmChasseurActive) {
+      bot.whisper(username, "⚠️ Le farm_chasseur n'est pas actif!");
+      return;
+    }
+
+    farmChasseurActive = false;
+    if (farmChasseurInterval) {
+      clearInterval(farmChasseurInterval);
+      farmChasseurInterval = null;
+    }
+    bot.whisper(username, "🛑 Farm_chasseur arrêté!");
   }
 });
 
 bot.on("kicked", (reason, loggedIn) => {
-  console.log(`🚫 Bot expulsé: ${reason}`);
+  console.log("🚫 Bot expulsé du serveur!");
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+  // La raison peut être une chaîne simple ou un objet JSON
+  let reasonText = reason;
+
+  try {
+    // Essayer de parser si c'est du JSON
+    if (typeof reason === "string" && reason.startsWith("{")) {
+      const parsed = JSON.parse(reason);
+      reasonText =
+        parsed.text || parsed.translate || JSON.stringify(parsed, null, 2);
+    } else if (typeof reason === "object") {
+      reasonText = JSON.stringify(reason, null, 2);
+    }
+  } catch (e) {
+    // Si ce n'est pas du JSON, utiliser la raison telle quelle
+    reasonText = reason;
+  }
+
+  console.log(`📋 Raison du kick: ${reasonText}`);
+  console.log(`🔐 Était connecté: ${loggedIn ? "Oui" : "Non"}`);
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 });
 
 bot.on("banned", (reason) => {
-  console.log(`🔨 Bot banni: ${reason}`);
+  console.log("🔨 Bot banni du serveur!");
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+  // La raison peut être une chaîne simple ou un objet JSON
+  let reasonText = reason;
+
+  try {
+    // Essayer de parser si c'est du JSON
+    if (typeof reason === "string" && reason.startsWith("{")) {
+      const parsed = JSON.parse(reason);
+      reasonText =
+        parsed.text || parsed.translate || JSON.stringify(parsed, null, 2);
+    } else if (typeof reason === "object") {
+      reasonText = JSON.stringify(reason, null, 2);
+    }
+  } catch (e) {
+    // Si ce n'est pas du JSON, utiliser la raison telle quelle
+    reasonText = reason;
+  }
+
+  console.log(`📋 Raison du ban: ${reasonText}`);
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 });
 
 bot.on("health", () => {
