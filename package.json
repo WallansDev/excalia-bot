@@ -1,0 +1,21 @@
+{
+  "name": "excalia-bot",
+  "version": "1.0.0",
+  "description": "Bot Minecraft compatible avec la version 1.21.11",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "dev": "node bot.js"
+  },
+  "keywords": [
+    "minecraft",
+    "bot",
+    "mineflayer"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "mineflayer": "^4.15.0",
+    "dotenv": "^16.4.5"
+  }
+}
