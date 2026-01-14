@@ -229,7 +229,7 @@ bot.on("whisper", async (username, message, rawMessage) => {
   }
 
   // Arrêter le farm_chasseur
-  if (lowerMessage.includes("farm_chasseur stop")) {
+  if (lowerMessage.includes("farm_chasseur_stop")) {
     if (!farmChasseurActive) {
       bot.whisper(username, "⚠️ Le farm_chasseur n'est pas actif!");
       return;
