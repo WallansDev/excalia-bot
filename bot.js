@@ -64,11 +64,28 @@ function executeFarmChasseur() {
   const center = bot.entity.position;
   const radius = 5;
 
-  // Récupérer toutes les entités non-joueurs dans le rayon
+  // Récupérer toutes les entités non-joueurs dans le rayon,
+  // mais uniquement les entités considérées comme mobs vivants (hostiles / passifs), pas les orbes, projectiles, etc.
   const nearbyMobs = Object.values(bot.entities).filter((entity) => {
     if (!entity || !entity.position) return false;
     if (entity.id === bot.entity.id) return false;
     if (entity.type === "player") return false;
+
+    // Stratégie plus permissive : on accepte si
+    // - type === "mob"
+    // - ou kind contient "mob"
+    // - ou l'entité a un displayName (souvent le cas des mobs) et n'est pas dans la liste invalide
+    const isMobType = entity.type === "mob";
+    const isMobKind =
+      typeof entity.kind === "string" &&
+      entity.kind.toLowerCase().includes("mob");
+    const hasDisplay = Boolean(entity.displayName);
+    if (!isMobType && !isMobKind && !hasDisplay) return false;
+
+    // Filtrer explicitement quelques entités non vivantes au cas où
+    const invalidNames = ["experience_orb", "xp_orb", "item", "arrow"];
+    if (invalidNames.includes(entity.name)) return false;
+
     const distance = entity.position.distanceTo(center);
     return distance <= radius;
   });
@@ -87,31 +104,61 @@ function executeFarmChasseur() {
   const target = nearbyMobs[0];
   if (!target) return;
 
-  // Re-récupérer l'entité à partir de son id juste avant d'attaquer
+  // Cooldown d'attaque pour laisser l'épée se recharger
+  const now = Date.now();
+  if (now < nextAttackTime) return;
+
+  // Re-récupérer l'entité à partir de son id pour avoir sa position actuelle
   const current = bot.entities[target.id];
   if (!current || !current.position || !current.isValid) return;
-
-  // Ne jamais attaquer un joueur
-  if (current.type === "player") return;
 
   // Vérifier la distance réelle au moment de l'attaque (position actuelle du bot)
   const dist = current.position.distanceTo(bot.entity.position);
   if (dist > 3.0) return; // portée de mêlée sécurisée
 
-  // Cooldown d'attaque pour laisser l'épée se recharger
-  const now = Date.now();
-  if (now < nextAttackTime) return;
+  // Tourner la caméra vers la tête du mob (position actuelle, pas celle du spawn)
+  const lookPos = current.position.offset(0, current.height ?? 1.2, 0);
 
   try {
-    bot.attack(current);
-    nextAttackTime = now + 600; // 0,6s de recharge
-    console.log(
-      `⚔️ Attaque d'un ${
-        current.displayName || current.name || "mob"
-      } (dist=${dist.toFixed(2)})`
-    );
+    // Tourner vers la cible d'abord
+    bot.lookAt(lookPos, true);
+
+    // Attendre que la rotation soit terminée avant d'attaquer
+    setTimeout(() => {
+      // Re-vérifier une dernière fois que l'entité est toujours valide
+      const checkTarget = bot.entities[target.id];
+      if (!checkTarget || !checkTarget.isValid) {
+        console.log("⚠️ Cible invalide après rotation");
+        return;
+      }
+
+      const now2 = Date.now();
+      if (now2 < nextAttackTime) {
+        console.log("⚠️ Cooldown pas encore écoulé");
+        return;
+      }
+
+      // Re-vérifier la distance une dernière fois
+      const finalDist = checkTarget.position.distanceTo(bot.entity.position);
+      if (finalDist > 3.0) {
+        console.log(`⚠️ Distance trop grande: ${finalDist.toFixed(2)}`);
+        return;
+      }
+
+      try {
+        bot.attack(checkTarget);
+        nextAttackTime = now2 + 600; // 0,6s de recharge
+        console.log(
+          `⚔️ Attaque d'un ${
+            checkTarget.displayName || checkTarget.name || "mob"
+          } (dist=${finalDist.toFixed(2)})`
+        );
+      } catch (err) {
+        console.log("❌ Erreur lors de l'attaque d'un mob:", err.message);
+      }
+    }, 100); // 100ms pour laisser le temps au bot de tourner complètement
   } catch (err) {
-    console.log("Erreur lors de l'attaque d'un mob:", err.message);
+    console.log("❌ Erreur lors du lookAt avant attaque:", err.message);
   }
 }
 
