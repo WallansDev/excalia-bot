@@ -176,7 +176,7 @@ bot.on("whisper", async (username, message, rawMessage) => {
 
   const lowerMessage = message.toLowerCase();
 
-  if (lowerMessage.includes("pos")) {
+  if (lowerMessage.includes("!pos")) {
     const pos = bot.entity.position;
 
     const reply = `ℹ️Ma position: X=${pos.x.toFixed(1)}, Y=${pos.y.toFixed(
@@ -186,7 +186,7 @@ bot.on("whisper", async (username, message, rawMessage) => {
     bot.whisper(username, reply);
   }
 
-  if (lowerMessage.includes("tpa")) {
+  if (lowerMessage.includes("!tpa")) {
     const pos = bot.entity.position;
 
     bot.whisper(username, "❓ Accepter ma demande de tp.");
@@ -195,8 +195,8 @@ bot.on("whisper", async (username, message, rawMessage) => {
 
   // Démarrer le farm_chasseur
   if (
-    lowerMessage.includes("farm_chasseur") &&
-    !lowerMessage.includes("stop")
+    lowerMessage.includes("!farm_chasseur") &&
+    !lowerMessage.includes("_stop")
   ) {
     if (farmChasseurActive) {
       bot.whisper(username, "⚠️ Le farm_chasseur est déjà actif!");
