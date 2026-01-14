@@ -196,7 +196,7 @@ bot.on("whisper", async (username, message, rawMessage) => {
     const pos = bot.entity.position;
 
     bot.whisper(username, "❓ Accepter ma demande de tp.");
-    bot.chat(`/tp ${username}`);
+    bot.chat(`/tpa ${username}`);
   }
 
   // Démarrer le farm_chasseur
