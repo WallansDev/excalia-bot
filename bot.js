@@ -57,6 +57,7 @@ bot.on("end", () => {
 // Variable pour gérer l'état du farm_chasseur
 let farmChasseurActive = false;
 let farmChasseurInterval = null;
+let nextAttackTime = 0; // Cooldown global pour les attaques (en ms)
 
 // Fonction pour exécuter une itération de farm
 function executeFarmChasseur() {
@@ -76,20 +77,42 @@ function executeFarmChasseur() {
     return; // Pas de mobs, on continue la boucle sans attaquer
   }
 
-  // Attaquer chaque mob avec un délai approprié pour éviter les kicks
-  nearbyMobs.forEach((mob, index) => {
-    const delay = index * 1000; // 1 seconde entre chaque mob pour éviter les kicks
-    setTimeout(() => {
-      if (!farmChasseurActive) return; // Arrêt demandé
-      if (!mob.isValid || !mob.position) return; // L'entité a peut-être disparu
-      try {
-        bot.attack(mob);
-        console.log(`⚔️ Attaque d'un ${mob.displayName || mob.name || "mob"}`);
-      } catch (err) {
-        console.log("Erreur lors de l'attaque d'un mob:", err.message);
-      }
-    }, delay);
+  // Choisir un seul mob (le plus proche) pour limiter les problèmes de désynchro
+  nearbyMobs.sort((a, b) => {
+    const da = a.position.distanceTo(center);
+    const db = b.position.distanceTo(center);
+    return da - db;
   });
+
+  const target = nearbyMobs[0];
+  if (!target) return;
+
+  // Re-récupérer l'entité à partir de son id juste avant d'attaquer
+  const current = bot.entities[target.id];
+  if (!current || !current.position || !current.isValid) return;
+
+  // Ne jamais attaquer un joueur
+  if (current.type === "player") return;
+
+  // Vérifier la distance réelle au moment de l'attaque (position actuelle du bot)
+  const dist = current.position.distanceTo(bot.entity.position);
+  if (dist > 3.0) return; // portée de mêlée sécurisée
+
+  // Cooldown d'attaque pour laisser l'épée se recharger
+  const now = Date.now();
+  if (now < nextAttackTime) return;
+
+  try {
+    bot.attack(current);
+    nextAttackTime = now + 600; // 0,6s de recharge
+    console.log(
+      `⚔️ Attaque d'un ${
+        current.displayName || current.name || "mob"
+      } (dist=${dist.toFixed(2)})`
+    );
+  } catch (err) {
+    console.log("Erreur lors de l'attaque d'un mob:", err.message);
+  }
 }
 
 bot.on("whisper", (username, message, rawMessage) => {
