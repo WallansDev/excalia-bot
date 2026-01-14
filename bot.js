@@ -115,7 +115,14 @@ function executeFarmChasseur() {
   }
 }
 
-bot.on("whisper", (username, message, rawMessage) => {
+// Fonctions utilitaires pour gérer les coffres
+async function openChestAsync(block) {
+  // Depuis mineflayer v4+, openChest renvoie une Promise qui se résout
+  // avec l'objet Chest quand l'inventaire est prêt.
+  return bot.openChest(block);
+}
+
+bot.on("whisper", async (username, message, rawMessage) => {
   if (username === bot.username) return;
 
   console.log(`🤫 MP de ${username}: ${message}`);
@@ -181,6 +188,66 @@ bot.on("whisper", (username, message, rawMessage) => {
       farmChasseurInterval = null;
     }
     bot.whisper(username, "🛑 Farm_chasseur arrêté!");
+  }
+
+  if (lowerMessage.includes("inventory")) {
+    // Cliquer sur le coffre le plus proche (moins de 3 blocks)
+    const chestBlock = bot.findBlock({
+      matching: (block) =>
+        block &&
+        (block.name === "chest" ||
+          block.name === "trapped_chest" ||
+          block.name === "barrel"),
+      maxDistance: 3,
+    });
+
+    if (!chestBlock) {
+      bot.whisper(
+        username,
+        "❌ Aucun coffre ou baril trouvé à moins de 3 blocs."
+      );
+      return;
+    }
+
+    try {
+      const chest = await openChestAsync(chestBlock);
+
+      // Vider son inventaire dans le coffre
+      const items = bot.inventory.items();
+      for (const item of items) {
+        try {
+          // Rechercher l'item encore présent dans l'inventaire
+          const current = bot.inventory
+            .items()
+            .find((i) => i.type === item.type);
+
+          // Si l'item n'est plus présent (déjà déposé / déplacé), on passe au suivant
+          if (!current) continue;
+
+          await chest.deposit(current.type, null, current.count);
+        } catch (err) {
+          console.log(
+            `Erreur lors du dépôt de ${item.displayName}:`,
+            err.message
+          );
+        }
+      }
+
+      // Quitter affichage coffre
+      chest.close();
+
+      // Envoyer message de réussite
+      bot.whisper(
+        username,
+        "✅ Inventaire vidé dans le coffre le plus proche."
+      );
+    } catch (err) {
+      console.log("Erreur lors de la gestion de l'inventaire:", err);
+      bot.whisper(
+        username,
+        "❌ Impossible de vider l'inventaire dans le coffre."
+      );
+    }
   }
 });
 
