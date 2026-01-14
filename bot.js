@@ -212,7 +212,7 @@ bot.on("whisper", async (username, message, rawMessage) => {
     farmChasseurActive = true;
     bot.whisper(
       username,
-      "✅ Farm_chasseur démarré! Envoie 'farm_chasseur stop' pour arrêter."
+      "✅ Farm_chasseur démarré! Envoie 'farm_chasseur_stop' pour arrêter."
     );
 
     // Exécuter immédiatement une première fois
