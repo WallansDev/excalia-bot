@@ -176,6 +176,12 @@ bot.on("whisper", async (username, message, rawMessage) => {
 
   const lowerMessage = message.toLowerCase();
 
+  if (lowerMessage.includes("!help")) {
+    const reply = `ℹ️ Commandes disponibles: !pos, !tpa, !farm_chasseur, !inventory`;
+
+    bot.whisper(username, reply);
+  }
+
   if (lowerMessage.includes("!pos")) {
     const pos = bot.entity.position;
 
