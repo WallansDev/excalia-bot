@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>ExcaliaBot Control Panel</title>
+    <style>
+        body {
+            background-color: #1e1e1e;
+            color: #ddd;
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+        }
+
+        h1 {
+            color: #4caf50;
+            margin-top: 0;
+        }
+
+        .card {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Boutons */
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+        .btn-primary {
+            background: #007acc;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #005f9e;
+        }
+
+        .btn-danger {
+            background: #d32f2f;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #b71c1c;
+        }
+
+        .btn-success {
+            background: #388e3c;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #fbc02d;
+            color: #333;
+        }
+
+        /* Logs */
+        #logs {
+            height: 400px;
+            overflow-y: auto;
+            background: #111;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 0.9em;
+            border: 1px solid #444;
+        }
+
+        .log-entry {
+            margin-bottom: 4px;
+            border-bottom: 1px solid #222;
+            padding-bottom: 2px;
+        }
+
+        .log-time {
+            color: #888;
+            margin-right: 10px;
+        }
+
+        /* Status */
+        .status-dot {
+            height: 12px;
+            width: 12px;
+            background-color: #bbb;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        .online {
+            background-color: #4caf50;
+            box-shadow: 0 0 8px #4caf50;
+        }
+
+        .offline {
+            background-color: #f44336;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="card">
+            <h1>🤖 Contrôles</h1>
+            <div style="margin-bottom: 20px;">
+                <span id="status-dot" class="status-dot"></span>
+                <span id="bot-status">Déconnecté</span>
+                <br>
+                <span>Santé: <strong id="bot-health">--</strong> / 20</span>
+                <br>
+                <span>Position: <span id="bot-pos">--</span></span>
+            </div>
+
+            <h3>⚔️ Chasse</h3>
+            <button onclick="sendCommand('start_farm')" class="btn btn-success">Démarrer Farm Chasseur</button>
+            <button onclick="sendCommand('stop_farm')" class="btn btn-danger">Arrêter Farm</button>
+
+            <h3>🎒 Inventaire</h3>
+            <button onclick="sendCommand('dump_inventory')" class="btn btn-warning">Vider dans coffre</button>
+
+            <h3>🔧 Utils</h3>
+            <button onclick="sendCommand('get_pos')" class="btn btn-primary">Actualiser Position</button>
+        </div>
+
+        <div class="card">
+            <h3>📜 Console du Bot</h3>
+            <div id="logs"></div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const logsDiv = document.getElementById('logs');
+
+        // Envoyer une commande au serveur
+        function sendCommand(cmd) {
+            socket.emit('command', cmd);
+        }
+
+        // Réception des logs
+        socket.on('log', (msg) => {
+            const div = document.createElement('div');
+            div.className = 'log-entry';
+            const time = new Date().toLocaleTimeString();
+            div.innerHTML = `<span class="log-time">[${time}]</span> ${msg}`;
+            logsDiv.appendChild(div);
+            logsDiv.scrollTop = logsDiv.scrollHeight; // Auto scroll
+        });
+
+        // Mises à jour d'état
+        socket.on('status_update', (data) => {
+            if (data.health) document.getElementById('bot-health').innerText = Math.round(data.health);
+            if (data.pos) document.getElementById('bot-pos').innerText = data.pos;
+        });
+
+        socket.on('bot_connected', (isConnected) => {
+            const dot = document.getElementById('status-dot');
+            const text = document.getElementById('bot-status');
+            if (isConnected) {
+                dot.className = 'status-dot online';
+                text.innerText = 'Connecté';
+                text.style.color = '#4caf50';
+            } else {
+                dot.className = 'status-dot offline';
+                text.innerText = 'Déconnecté';
+                text.style.color = '#f44336';
+            }
+        });
+    </script>
+</body>
+
+</html>

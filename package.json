@@ -15,7 +15,9 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^5.2.1",
     "mineflayer": "^4.15.0",
-    "dotenv": "^16.4.5"
+    "socket.io": "^4.8.3"
   }
 }
