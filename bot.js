@@ -223,6 +223,21 @@ io.on("connection", (socket) => {
       return;
     }
 
+    socket.on("teleport_to", (username) => {
+      if (!bot) {
+        socket.emit("log", "❌ Le bot n'est pas connecté.");
+        return;
+      }
+
+      // Sécurité basique pour éviter d'injecter n'importe quoi
+      const cleanUsername = username.trim();
+
+      if (cleanUsername) {
+        log(`🚀 Téléportation vers : ${cleanUsername}`);
+        bot.chat(`/tp ${cleanUsername}`);
+      }
+    });
+
     switch (cmd) {
       case "start_farm":
         startFarm();

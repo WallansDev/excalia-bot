@@ -13,6 +13,23 @@
             padding: 20px;
         }
 
+        .input-text {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: #444;
+            border: 1px solid #555;
+            color: white;
+            border-radius: 5px;
+            box-sizing: border-box;
+            /* Important pour que le padding ne casse pas la largeur */
+        }
+
+        .input-text:focus {
+            outline: none;
+            border-color: #007acc;
+        }
+
         .container {
             max-width: 900px;
             margin: 0 auto;
@@ -140,7 +157,8 @@
             <button onclick="sendCommand('dump_inventory')" class="btn btn-warning">Vider dans coffre</button>
 
             <h3>🔧 Utils</h3>
-            <button onclick="sendCommand('get_pos')" class="btn btn-primary">Actualiser Position</button>
+            <input type="text" id="tp-target" class="input-text" placeholder="Pseudo du joueur...">
+            <button onclick="sendTeleport()" class="btn btn-primary">Se Téléporter</button>
         </div>
 
         <div class="card">
@@ -157,6 +175,18 @@
         // Envoyer une commande au serveur
         function sendCommand(cmd) {
             socket.emit('command', cmd);
+        }
+
+        function sendTeleport() {
+            const playerParams = document.getElementById('tp-target').value;
+
+            if (playerParams.trim() === "") {
+                alert("Veuillez entrer un pseudo !");
+                return;
+            }
+
+            // On envoie un événement spécifique 'teleport_to' avec le pseudo
+            socket.emit('teleport_to', playerParams);
         }
 
         // Réception des logs
