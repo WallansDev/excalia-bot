@@ -13,6 +13,31 @@
             padding: 20px;
         }
 
+        .xp-container {
+            margin-top: 10px;
+            background: #222;
+            border-radius: 4px;
+            overflow: hidden;
+            /* Pour que la barre ne dépasse pas les coins arrondis */
+            border: 1px solid #444;
+        }
+
+        .xp-bar {
+            height: 10px;
+            background-color: #81c784;
+            /* Vert Minecraft clair */
+            width: 0%;
+            /* Sera modifié par JS */
+            transition: width 0.3s ease;
+            box-shadow: 0 0 5px #4caf50;
+        }
+
+        .xp-text {
+            font-size: 0.9em;
+            color: #81c784;
+            margin-top: 5px;
+        }
+
         .input-text {
             width: 100%;
             padding: 10px;
@@ -87,8 +112,13 @@
         }
 
         .btn-warning {
-            background: #fbc02d;
-            color: #333;
+            background: #f39c12;
+            color: white;
+        }
+
+        .btn-purple {
+            background: #8e44ad;
+            color: white;
         }
 
         /* Logs */
@@ -107,6 +137,7 @@
             margin-bottom: 4px;
             border-bottom: 1px solid #222;
             padding-bottom: 2px;
+            white-space: pre-wrap;
         }
 
         .log-time {
@@ -142,11 +173,20 @@
             <h1>🤖 Contrôles</h1>
             <div style="margin-bottom: 20px;">
                 <span id="status-dot" class="status-dot"></span>
-                <span id="bot-status">Déconnecté</span>
+                <span id="bot-status"></span>
                 <br>
-                <span>Santé: <strong id="bot-health">--</strong> / 20</span>
-                <br>
-                <span>Position: <span id="bot-pos">--</span></span>
+                <div style="margin-top: 5px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>❤️ <strong id="bot-health">--</strong> / 20</div>
+                </div>
+
+                <div style="margin-top: 5px; font-size: 0.9em; color: #aaa;">
+                    📍 <strong id="bot-pos">--</strong>
+                </div>
+
+                <div class="xp-text">✨ Niveau <strong id="bot-level">0</strong></div>
+                <div class="xp-container">
+                    <div id="bot-xp-bar" class="xp-bar"></div>
+                </div>
             </div>
 
             <h3>⚔️ Chasse</h3>
@@ -155,6 +195,7 @@
 
             <h3>🎒 Inventaire</h3>
             <button onclick="sendCommand('dump_inventory')" class="btn btn-warning">Vider dans coffre</button>
+            <button onclick="sendCommand('show_inventory')" class="btn btn-purple">Afficher</button>
 
             <h3>🔧 Utils</h3>
             <input type="text" id="tp-target" class="input-text" placeholder="Pseudo du joueur...">
@@ -201,8 +242,23 @@
 
         // Mises à jour d'état
         socket.on('status_update', (data) => {
-            if (data.health) document.getElementById('bot-health').innerText = Math.round(data.health);
-            if (data.pos) document.getElementById('bot-pos').innerText = data.pos;
+            // Mise à jour Santé
+            if (data.health !== undefined) {
+                document.getElementById('bot-health').innerText = Math.round(data.health);
+            }
+
+            // Mise à jour Position
+            if (data.pos) {
+                document.getElementById('bot-pos').innerText = data.pos;
+            }
+
+            // Mise à jour XP (Nouveau)
+            if (data.xp) {
+                document.getElementById('bot-level').innerText = data.xp.level;
+                // La barre de progression est un chiffre entre 0 et 1, on multiplie par 100 pour le %
+                const percent = (data.xp.progress * 100).toFixed(1);
+                document.getElementById('bot-xp-bar').style.width = percent + '%';
+            }
         });
 
         socket.on('bot_connected', (isConnected) => {

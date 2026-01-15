@@ -57,6 +57,10 @@ function initBotEvents() {
     updateWebStatus();
   });
 
+  bot.on("experience", () => {
+    updateWebStatus(); // Met à jour le site web quand l'XP change
+  });
+
   bot.on("error", (err) => {
     log("❌ Erreur du bot: " + err.message);
   });
@@ -77,9 +81,15 @@ function initBotEvents() {
 function updateWebStatus() {
   if (!bot || !bot.entity) return;
   const pos = bot.entity.position;
+
   io.emit("status_update", {
     health: bot.health,
     pos: `X:${pos.x.toFixed(0)} Y:${pos.y.toFixed(0)} Z:${pos.z.toFixed(0)}`,
+    // Ajout des données d'XP
+    xp: {
+      level: bot.experience.level, // Niveau global (ex: 30)
+      progress: bot.experience.progress, // Progression vers le prochain niveau (0.0 à 1.0)
+    },
   });
 }
 
@@ -210,6 +220,33 @@ async function dumpInventory() {
   }
 }
 
+function showInventory() {
+  if (!bot) return;
+
+  const items = bot.inventory.items();
+
+  if (items.length === 0) {
+    log("🎒 Inventaire vide.");
+    return;
+  }
+
+  const inventorySummary = {};
+
+  items.forEach((item) => {
+    if (inventorySummary[item.displayName]) {
+      inventorySummary[item.displayName] += item.count;
+    } else {
+      inventorySummary[item.displayName] = item.count;
+    }
+  });
+
+  const textList = Object.entries(inventorySummary)
+    .map(([name, count]) => `- ${name} x${count}`)
+    .join("\n");
+
+  log(`🎒 Inventaire (${items.length} slots occupés) :\n${textList}`);
+}
+
 // --- GESTION DES COMMANDES SOCKET.IO (Depuis le Web) ---
 io.on("connection", (socket) => {
   // Dès qu'on ouvre la page, on envoie l'état actuel
@@ -234,7 +271,7 @@ io.on("connection", (socket) => {
 
       if (cleanUsername) {
         log(`🚀 Téléportation vers : ${cleanUsername}`);
-        bot.chat(`/tp ${cleanUsername}`);
+        bot.chat(`/tpa ${cleanUsername}`);
       }
     });
 
@@ -247,6 +284,9 @@ io.on("connection", (socket) => {
         break;
       case "dump_inventory":
         dumpInventory();
+        break;
+      case "show_inventory":
+        showInventory();
         break;
       case "get_pos":
         updateWebStatus();
