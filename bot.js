@@ -71,13 +71,6 @@ function initBotEvents() {
   bot.on("move", () => {
     /* Trop de spam si on log tout, on met juste à jour la variable interne si besoin */
   });
-
-  // Écoute des MPs (gardé pour compatibilité in-game)
-  bot.on("whisper", (username, message) => {
-    if (username === bot.username) return;
-    log(`🤫 MP de ${username}: ${message}`);
-    // ... (votre logique de chat existante peut rester ici si souhaité)
-  });
 }
 
 // Envoyer la santé et position au web régulièrement ou sur demande
@@ -89,8 +82,6 @@ function updateWebStatus() {
     pos: `X:${pos.x.toFixed(0)} Y:${pos.y.toFixed(0)} Z:${pos.z.toFixed(0)}`,
   });
 }
-
-// --- FONCTIONS ACTIONS ---
 
 // 1. Logique Farm Chasseur
 function startFarm() {
