@@ -66,9 +66,14 @@ function connectBot(botConfig) {
     };
   }
 
-  bot = mineflayer.createBot(botOptions);
-
-  initBotEvents();
+  try {
+    bot = mineflayer.createBot(botOptions);
+    initBotEvents();
+  } catch (err) {
+    log("❌ Erreur lors de la création du bot: " + err.message);
+    io.emit("bot_connected", false);
+    bot = null;
+  }
 }
 
 function disconnectBot() {
@@ -100,13 +105,55 @@ function initBotEvents() {
   });
 
   bot.on("error", (err) => {
-    log("❌ Erreur du bot: " + err.message);
+    let errorMessage = "❌ Erreur du bot: " + err.message;
+    let advice = "";
+
+    // Gestion des erreurs courantes avec conseils
+    if (err.code === "ECONNRESET") {
+      errorMessage = "❌ Connexion réinitialisée par le serveur";
+      advice =
+        "\n💡 Conseils:\n" +
+        "- Vérifiez que le serveur est en ligne et accessible\n" +
+        "- Vérifiez que le port est correct\n" +
+        "- Le serveur peut avoir rejeté la connexion (whitelist, bannissement)\n" +
+        "- Vérifiez votre connexion internet";
+    } else if (err.code === "ETIMEDOUT" || err.code === "ENOTFOUND") {
+      errorMessage = "❌ Impossible de se connecter au serveur";
+      advice =
+        "\n💡 Conseils:\n" +
+        "- Vérifiez l'adresse du serveur (host)\n" +
+        "- Vérifiez que le serveur est accessible depuis votre réseau\n" +
+        "- Vérifiez votre connexion internet";
+    } else if (err.code === "ECONNREFUSED") {
+      errorMessage = "❌ Connexion refusée par le serveur";
+      advice =
+        "\n💡 Conseils:\n" +
+        "- Le serveur n'accepte peut-être pas de nouvelles connexions\n" +
+        "- Vérifiez que le port est correct\n" +
+        "- Le serveur peut être en maintenance";
+    } else if (err.message && err.message.includes("Invalid session")) {
+      errorMessage = "❌ Session invalide";
+      advice =
+        "\n💡 Conseils:\n" +
+        "- Vérifiez vos identifiants Microsoft si vous utilisez l'authentification Microsoft\n" +
+        "- Réessayez de vous connecter";
+    }
+
+    log(errorMessage + advice);
+    io.emit("bot_connected", false);
   });
 
   bot.on("end", () => {
     log("👋 Bot déconnecté.");
     io.emit("bot_connected", false);
     bot = null;
+  });
+
+  bot.on("kicked", (reason, loggedIn) => {
+    const reasonText =
+      typeof reason === "string" ? reason : JSON.stringify(reason);
+    log(`🚫 Bot expulsé du serveur: ${reasonText}`);
+    io.emit("bot_connected", false);
   });
 
   bot.on("health", () => updateWebStatus());
