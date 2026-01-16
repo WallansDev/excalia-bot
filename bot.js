@@ -22,14 +22,6 @@ function log(message) {
   io.emit("log", message); // Vers la page web
 }
 
-// Configuration du bot
-const config = {
-  host: process.env.SERVER_HOST || "localhost",
-  port: parseInt(process.env.SERVER_PORT) || 61341,
-  username: process.env.BOT_USERNAME || "ExcaliaBot",
-  auth: process.env.AUTH_TYPE || "offline",
-};
-
 log("🚀 Démarrage du système...");
 
 // --- LOGIQUE DU BOT ---
@@ -38,16 +30,62 @@ let farmChasseurActive = false;
 let farmChasseurInterval = null;
 let nextAttackTime = 0;
 
-function createBot() {
-  bot = mineflayer.createBot({
-    host: config.host,
-    port: config.port,
-    username: config.username,
+function connectBot(botConfig) {
+  // Si un bot est déjà connecté, on le déconnecte d'abord
+  if (bot) {
+    disconnectBot();
+  }
+
+  log(`🔌 Connexion au serveur ${botConfig.host}:${botConfig.port}...`);
+
+  const botOptions = {
+    host: botConfig.host,
+    port: botConfig.port,
+    username: botConfig.username,
     // version: "1.21.11",
-    auth: config.auth,
-  });
+    auth: botConfig.auth || "offline",
+  };
+
+  // Gestion de l'authentification Microsoft avec callback pour le lien de validation
+  if (botConfig.auth === "microsoft") {
+    botOptions.onMsaCode = (data) => {
+      const message =
+        `🔐 Authentification Microsoft requise\n\n` +
+        `Veuillez ouvrir ce lien dans votre navigateur :\n${data.verification_uri}\n\n` +
+        `Code de vérification : ${data.user_code}\n\n` +
+        `Une fois authentifié, la connexion se poursuivra automatiquement.`;
+
+      log(message);
+
+      // Envoyer un événement spécial pour afficher le lien dans un pop-up
+      io.emit("msa_code", {
+        verification_uri: data.verification_uri,
+        user_code: data.user_code,
+        message: data.message || "Veuillez vous authentifier avec Microsoft",
+      });
+    };
+  }
+
+  bot = mineflayer.createBot(botOptions);
 
   initBotEvents();
+}
+
+function disconnectBot() {
+  if (!bot) {
+    log("⚠️ Aucun bot à déconnecter.");
+    return;
+  }
+
+  // Arrêter le farm si actif
+  if (farmChasseurActive) {
+    stopFarm();
+  }
+
+  log("👋 Déconnexion du bot...");
+  bot.end();
+  bot = null;
+  io.emit("bot_connected", false);
 }
 
 function initBotEvents() {
@@ -66,9 +104,9 @@ function initBotEvents() {
   });
 
   bot.on("end", () => {
-    log("👋 Bot déconnecté. Reconnexion dans 5s...");
+    log("👋 Bot déconnecté.");
     io.emit("bot_connected", false);
-    setTimeout(createBot, 5000);
+    bot = null;
   });
 
   bot.on("health", () => updateWebStatus());
@@ -253,27 +291,60 @@ io.on("connection", (socket) => {
   socket.emit("bot_connected", bot && bot.entity);
   updateWebStatus();
 
+  // Gestion de la connexion du bot
+  socket.on("connect_bot", (botConfig) => {
+    try {
+      // Validation des données
+      if (!botConfig.host || !botConfig.port || !botConfig.username) {
+        socket.emit("log", "❌ Veuillez remplir tous les champs requis.");
+        return;
+      }
+
+      const port = parseInt(botConfig.port);
+      if (isNaN(port) || port < 1 || port > 65535) {
+        socket.emit("log", "❌ Le port doit être un nombre entre 1 et 65535.");
+        return;
+      }
+
+      connectBot({
+        host: botConfig.host.trim(),
+        port: port,
+        username: botConfig.username.trim(),
+        auth: botConfig.auth || "offline",
+      });
+    } catch (err) {
+      log("❌ Erreur lors de la connexion: " + err.message);
+      socket.emit("log", "❌ Erreur lors de la connexion: " + err.message);
+    }
+  });
+
+  // Gestion de la déconnexion du bot
+  socket.on("disconnect_bot", () => {
+    disconnectBot();
+  });
+
+  // Gestion de la téléportation
+  socket.on("teleport_to", (username) => {
+    if (!bot) {
+      socket.emit("log", "❌ Le bot n'est pas connecté.");
+      return;
+    }
+
+    // Sécurité basique pour éviter d'injecter n'importe quoi
+    const cleanUsername = username.trim();
+
+    if (cleanUsername) {
+      log(`🚀 Téléportation vers : ${cleanUsername}`);
+      bot.chat(`/tpa ${cleanUsername}`);
+    }
+  });
+
   // Réception des clics boutons
   socket.on("command", (cmd) => {
     if (!bot) {
       socket.emit("log", "❌ Le bot n'est pas initialisé.");
       return;
     }
-
-    socket.on("teleport_to", (username) => {
-      if (!bot) {
-        socket.emit("log", "❌ Le bot n'est pas connecté.");
-        return;
-      }
-
-      // Sécurité basique pour éviter d'injecter n'importe quoi
-      const cleanUsername = username.trim();
-
-      if (cleanUsername) {
-        log(`🚀 Téléportation vers : ${cleanUsername}`);
-        bot.chat(`/tpa ${cleanUsername}`);
-      }
-    });
 
     switch (cmd) {
       case "start_farm":
@@ -298,11 +369,11 @@ io.on("connection", (socket) => {
   });
 });
 
-// Lancement du serveur Web + Bot
+// Lancement du serveur Web (sans connexion automatique du bot)
 server.listen(WEB_PORT, () => {
   console.log(
     `\n💻 INTERFACE GRAPHIQUE DISPONIBLE SUR: http://localhost:${WEB_PORT}`
   );
   console.log("---------------------------------------------------");
-  createBot();
+  log("⏳ En attente de connexion du bot depuis l'interface web...");
 });
