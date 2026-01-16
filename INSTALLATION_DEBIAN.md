@@ -91,7 +91,7 @@ sudo npm install -g pm2
 #### Créer un fichier de configuration PM2
 
 ```bash
-nano ecosystem.config.js
+nano ecosystem.config.cjs
 ```
 
 Contenu du fichier :
@@ -131,7 +131,7 @@ module.exports = {
 mkdir -p logs
 
 # Démarrer les applications
-pm2 start ecosystem.config.js
+pm2 start ecosystem.config.cjs
 
 # Voir le statut
 pm2 status

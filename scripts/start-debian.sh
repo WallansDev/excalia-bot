@@ -45,7 +45,7 @@ start_pm2() {
         exit 1
     fi
     
-    pm2 start ecosystem.config.js
+    pm2 start ecosystem.config.cjs
     pm2 logs
 }
 
