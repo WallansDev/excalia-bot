@@ -8,12 +8,18 @@ const path = require("path");
 // --- CONFIGURATION WEB SERVER (GUI) ---
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+  cors: {
+    origin: ["http://localhost:8080", "http://localhost:5173"],
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+});
 const WEB_PORT = 3000;
 
-// Servir la page dashboard.html
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "dashboard.html"));
+// Route de santé pour vérifier que le serveur fonctionne
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", message: "Bot server running" });
 });
 
 // Fonction utilitaire pour envoyer des logs à la fois dans la console et sur le web

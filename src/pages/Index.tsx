@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Bot, Plug, PlugZap, Sword, Square, Package, Eye, Send } from "lucide-react";
 import { StatusCard } from "@/components/dashboard/StatusCard";
@@ -8,74 +8,58 @@ import { ConsoleLog } from "@/components/dashboard/ConsoleLog";
 import { ConnectModal } from "@/components/dashboard/ConnectModal";
 import { MsaModal } from "@/components/dashboard/MsaModal";
 import { toast } from "sonner";
-
-interface LogEntry {
-  id: string;
-  time: string;
-  message: string;
-}
+import { useSocket } from "@/hooks/useSocket";
 
 const Index = () => {
-  // Bot state (simulated - will be replaced by socket.io)
-  const [isConnected, setIsConnected] = useState(false);
-  const [health, setHealth] = useState(20);
-  const [position, setPosition] = useState("X: 0 Y: 64 Z: 0");
-  const [level, setLevel] = useState(12);
-  const [xpProgress, setXpProgress] = useState(0.45);
+  // Socket.IO hook pour la connexion au serveur bot.js
+  const {
+    isConnected: socketConnected,
+    isBotConnected,
+    status,
+    logs,
+    msaData,
+    connectBot,
+    disconnectBot,
+    sendCommand: sendSocketCommand,
+    teleportTo,
+    clearMsaData,
+    clearLogs,
+  } = useSocket();
+
   const [tpTarget, setTpTarget] = useState("");
-  
-  // Logs
-  const [logs, setLogs] = useState<LogEntry[]>([
-    { id: "1", time: "12:34:56", message: "Bot initialisé avec succès" },
-    { id: "2", time: "12:34:57", message: "En attente de connexion au serveur..." },
-  ]);
   
   // Modals
   const [connectModalOpen, setConnectModalOpen] = useState(false);
   const [msaModalOpen, setMsaModalOpen] = useState(false);
-  const [msaData, setMsaData] = useState({ code: "", link: "", message: "" });
 
-  // Actions (simulated)
+  // Afficher le modal MSA automatiquement quand les données sont reçues
+  useEffect(() => {
+    if (msaData) {
+      setMsaModalOpen(true);
+    }
+  }, [msaData]);
+
+  // Toast pour indiquer l'état de connexion Socket.IO
+  useEffect(() => {
+    if (socketConnected) {
+      toast.success("Connecté au serveur");
+    }
+  }, [socketConnected]);
+
+  // Actions
   const sendCommand = (cmd: string) => {
-    const newLog: LogEntry = {
-      id: Date.now().toString(),
-      time: new Date().toLocaleTimeString(),
-      message: `Commande envoyée: ${cmd}`,
-    };
-    setLogs((prev) => [...prev, newLog]);
+    sendSocketCommand(cmd);
     toast.success(`Commande "${cmd}" envoyée`);
   };
 
   const handleConnect = (config: { host: string; port: string; username: string; auth: string }) => {
-    const newLog: LogEntry = {
-      id: Date.now().toString(),
-      time: new Date().toLocaleTimeString(),
-      message: `Connexion à ${config.host}:${config.port} en tant que ${config.username}...`,
-    };
-    setLogs((prev) => [...prev, newLog]);
-    
-    // Simulate connection
-    setTimeout(() => {
-      setIsConnected(true);
-      const connectedLog: LogEntry = {
-        id: Date.now().toString(),
-        time: new Date().toLocaleTimeString(),
-        message: "Bot connecté avec succès !",
-      };
-      setLogs((prev) => [...prev, connectedLog]);
-      toast.success("Bot connecté !");
-    }, 1500);
+    connectBot(config);
+    setConnectModalOpen(false);
   };
 
   const handleDisconnect = () => {
-    setIsConnected(false);
-    const newLog: LogEntry = {
-      id: Date.now().toString(),
-      time: new Date().toLocaleTimeString(),
-      message: "Bot déconnecté",
-    };
-    setLogs((prev) => [...prev, newLog]);
-    toast.info("Bot déconnecté");
+    disconnectBot();
+    toast.info("Déconnexion du bot...");
   };
 
   const handleTeleport = () => {
@@ -83,8 +67,14 @@ const Index = () => {
       toast.error("Veuillez entrer un pseudo !");
       return;
     }
-    sendCommand(`teleport_to ${tpTarget}`);
+    teleportTo(tpTarget);
     setTpTarget("");
+    toast.info(`Téléportation vers ${tpTarget}...`);
+  };
+
+  const handleCloseMsaModal = () => {
+    setMsaModalOpen(false);
+    clearMsaData();
   };
 
   return (
@@ -123,11 +113,11 @@ const Index = () => {
           <div className="space-y-6">
             {/* Status Card */}
             <StatusCard
-              isConnected={isConnected}
-              health={health}
-              position={position}
-              level={level}
-              xpProgress={xpProgress}
+              isConnected={isBotConnected}
+              health={status.health}
+              position={status.pos}
+              level={status.xp.level}
+              xpProgress={status.xp.progress}
             />
 
             {/* Controls Card */}
@@ -139,7 +129,7 @@ const Index = () => {
             >
               {/* Connection */}
               <ControlSection title="Connexion" icon="🔌">
-                {!isConnected ? (
+                {!isBotConnected ? (
                   <ActionButton
                     onClick={() => setConnectModalOpen(true)}
                     variant="success"
@@ -219,7 +209,7 @@ const Index = () => {
 
           {/* Right Column - Console */}
           <div className="min-h-[500px] lg:min-h-0">
-            <ConsoleLog logs={logs} />
+            <ConsoleLog logs={logs} onClear={clearLogs} />
           </div>
         </div>
       </div>
@@ -232,10 +222,10 @@ const Index = () => {
       />
       <MsaModal
         isOpen={msaModalOpen}
-        onClose={() => setMsaModalOpen(false)}
-        code={msaData.code}
-        link={msaData.link}
-        message={msaData.message}
+        onClose={handleCloseMsaModal}
+        code={msaData?.user_code || ""}
+        link={msaData?.verification_uri || ""}
+        message={msaData?.message || ""}
       />
     </div>
   );
