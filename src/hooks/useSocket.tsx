@@ -82,7 +82,7 @@ export const useSocket = () => {
       setLogs((prev) => {
         const newLogs = [...prev, newLog];
         // Limiter à 200 logs maximum pour éviter les problèmes de performance
-        return newLogs.slice(-200);
+        return newLogs.slice(-23);
       });
     });
 

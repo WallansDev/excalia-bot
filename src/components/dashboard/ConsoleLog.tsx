@@ -22,8 +22,10 @@ export const ConsoleLog = ({ logs, onClear }: ConsoleLogProps) => {
     // Auto-scroll uniquement si l'utilisateur est proche du bas
     if (logsContainerRef.current) {
       const container = logsContainerRef.current;
-      const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
-      
+      const isNearBottom =
+        container.scrollHeight - container.scrollTop - container.clientHeight <
+        100;
+
       if (isNearBottom) {
         logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
       }
@@ -44,7 +46,6 @@ export const ConsoleLog = ({ logs, onClear }: ConsoleLogProps) => {
         </div>
         <div className="flex-1">
           <h3 className="font-display text-lg font-semibold">Console du Bot</h3>
-          <p className="text-xs text-muted-foreground">{logs.length} entrées {logs.length >= 200 && "(limité à 200)"}</p>
         </div>
         {onClear && logs.length > 0 && (
           <Button
@@ -65,7 +66,7 @@ export const ConsoleLog = ({ logs, onClear }: ConsoleLogProps) => {
       </div>
 
       {/* Logs */}
-      <div 
+      <div
         ref={logsContainerRef}
         className="flex-1 overflow-y-auto p-4 scrollbar-custom bg-[hsl(220_25%_6%)] font-mono text-sm"
       >
@@ -78,7 +79,7 @@ export const ConsoleLog = ({ logs, onClear }: ConsoleLogProps) => {
             {logs.map((log, index) => {
               // Animation uniquement pour les 10 derniers logs pour la performance
               const shouldAnimate = index >= logs.length - 10;
-              
+
               return shouldAnimate ? (
                 <motion.div
                   key={log.id}
@@ -87,16 +88,24 @@ export const ConsoleLog = ({ logs, onClear }: ConsoleLogProps) => {
                   transition={{ duration: 0.15 }}
                   className="py-1.5 border-b border-border/20 last:border-0 flex gap-3"
                 >
-                  <span className="text-muted-foreground shrink-0">[{log.time}]</span>
-                  <span className="text-foreground/90 whitespace-pre-wrap break-all">{log.message}</span>
+                  <span className="text-muted-foreground shrink-0">
+                    [{log.time}]
+                  </span>
+                  <span className="text-foreground/90 whitespace-pre-wrap break-all">
+                    {log.message}
+                  </span>
                 </motion.div>
               ) : (
                 <div
                   key={log.id}
                   className="py-1.5 border-b border-border/20 last:border-0 flex gap-3"
                 >
-                  <span className="text-muted-foreground shrink-0">[{log.time}]</span>
-                  <span className="text-foreground/90 whitespace-pre-wrap break-all">{log.message}</span>
+                  <span className="text-muted-foreground shrink-0">
+                    [{log.time}]
+                  </span>
+                  <span className="text-foreground/90 whitespace-pre-wrap break-all">
+                    {log.message}
+                  </span>
                 </div>
               );
             })}
