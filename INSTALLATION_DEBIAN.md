@@ -147,6 +147,10 @@ pm2 restart all
 
 # Configurer le démarrage automatique au boot
 pm2 startup
+# Exécutez la commande affichée par PM2 (elle ressemble à ceci) :
+# sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u votre-user --hp /home/votre-user
+
+# Sauvegarder la configuration actuelle
 pm2 save
 ```
 

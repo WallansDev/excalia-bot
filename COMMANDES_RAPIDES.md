@@ -61,8 +61,10 @@ pm2 delete all
 # Sauvegarder la configuration
 pm2 save
 
-# Démarrage automatique
+# Démarrage automatique au boot
 pm2 startup
+# Exécutez la commande affichée, puis :
+pm2 save
 ```
 
 ## 🔍 Debug
